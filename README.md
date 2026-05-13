@@ -97,6 +97,12 @@ python -m src.predict --image data/demo/images/electronics_001.png --text "wirel
 streamlit run app.py
 ```
 
+If `streamlit` is not on PATH, use:
+
+```bash
+python -m streamlit run app.py
+```
+
 The demo shows:
 
 - uploaded image preview
@@ -133,8 +139,35 @@ python -m unittest discover -s tests
 or, after installing `pytest`:
 
 ```bash
-pytest
+pytest tests -q
 ```
+
+## Deployment (Docker)
+
+Build:
+
+```bash
+docker build -t multimodal-classifier .
+```
+
+Run:
+
+```bash
+docker run --rm -p 8501:8501 --env PORT=8501 multimodal-classifier
+```
+
+Or with Compose:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Production notes:
+
+- App listens on port `8501` by default.
+- The demo bootstraps local artifacts into `data/demo`, `models`, and `reports`.
+- CLIP mode requires model availability/download access.
 
 ## Limitations
 

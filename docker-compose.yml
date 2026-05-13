@@ -1,0 +1,8 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-8501}:8501"
+    environment:
+      - PORT=8501
+    command: streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true

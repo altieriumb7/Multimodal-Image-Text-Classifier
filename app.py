@@ -72,50 +72,63 @@ with left:
 
 with right:
     st.button("Refresh prediction", type="primary", use_container_width=True)
+    temporary_image_path: Path | None = None
     if uploaded is not None:
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             image.save(tmp.name)
-            preview_path = Path(tmp.name)
+            temporary_image_path = Path(tmp.name)
+            preview_path = temporary_image_path
 
-    result = predict_listing(
-        image_path=preview_path,
-        text=text,
-        model_path=DEFAULT_MODEL_PATH,
-        backend="demo",
-    )
+    try:
+        result = predict_listing(
+            image_path=preview_path,
+            text=text,
+            model_path=DEFAULT_MODEL_PATH,
+            backend=None,
+        )
+    except Exception as exc:
+        st.error(f"Prediction failed: {exc}")
+        result = None
+    finally:
+        if temporary_image_path is not None and temporary_image_path.exists():
+            try:
+                temporary_image_path.unlink()
+            except OSError:
+                pass
 
-    metric_left, metric_right = st.columns(2)
-    metric_left.metric("Predicted class", result["predicted_class"])
-    metric_right.metric("Confidence", format_percent(result["confidence"]))
+    if result is not None:
+        metric_left, metric_right = st.columns(2)
+        metric_left.metric("Predicted class", result["predicted_class"])
+        metric_right.metric("Confidence", format_percent(result["confidence"]))
 
-    st.subheader("Top-3 multimodal predictions")
-    st.table(
-        [
-            {"Rank": idx + 1, "Class": row["class"], "Confidence": format_percent(row["confidence"])}
-            for idx, row in enumerate(result["top_3"])
-        ]
-    )
+        st.subheader("Top-3 multimodal predictions")
+        st.table(
+            [
+                {"Rank": idx + 1, "Class": row["class"], "Confidence": format_percent(row["confidence"])}
+                for idx, row in enumerate(result["top_3"])
+            ]
+        )
 
-    st.subheader("Image-only vs text-only vs multimodal")
-    st.table(
-        [
-            {
-                "Model": "Image only",
-                "Prediction": result["comparison"]["image_only"]["predicted_class"],
-                "Confidence": format_percent(result["comparison"]["image_only"]["confidence"]),
-            },
-            {
-                "Model": "Text only",
-                "Prediction": result["comparison"]["text_only"]["predicted_class"],
-                "Confidence": format_percent(result["comparison"]["text_only"]["confidence"]),
-            },
-            {
-                "Model": "Multimodal",
-                "Prediction": result["comparison"]["multimodal"]["predicted_class"],
-                "Confidence": format_percent(result["comparison"]["multimodal"]["confidence"]),
-            },
-        ]
-    )
+        st.subheader("Image-only vs text-only vs multimodal")
+        st.table(
+            [
+                {
+                    "Model": "Image only",
+                    "Prediction": result["comparison"]["image_only"]["predicted_class"],
+                    "Confidence": format_percent(result["comparison"]["image_only"]["confidence"]),
+                },
+                {
+                    "Model": "Text only",
+                    "Prediction": result["comparison"]["text_only"]["predicted_class"],
+                    "Confidence": format_percent(result["comparison"]["text_only"]["confidence"]),
+                },
+                {
+                    "Model": "Multimodal",
+                    "Prediction": result["comparison"]["multimodal"]["predicted_class"],
+                    "Confidence": format_percent(result["comparison"]["multimodal"]["confidence"]),
+                },
+            ]
+        )
 
 st.divider()
 

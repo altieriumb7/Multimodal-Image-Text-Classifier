@@ -26,7 +26,7 @@ class PredictionTest(unittest.TestCase):
             image_path=example.image_path,
             text=example.text,
             model_path=model_path,
-            backend="demo",
+            backend=None,
         )
 
         self.assertIn("predicted_class", result)
@@ -35,6 +35,7 @@ class PredictionTest(unittest.TestCase):
         self.assertIn("image_only", result["comparison"])
         self.assertIn("text_only", result["comparison"])
         self.assertIn("multimodal", result["comparison"])
+        self.assertEqual(result["feature_backend_used"], "demo")
 
 
 if __name__ == "__main__":
