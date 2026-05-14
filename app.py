@@ -10,6 +10,7 @@ from src.bootstrap import ensure_demo_artifacts
 from src.config import DEFAULT_MODEL_PATH
 from src.data import load_dataset
 from src.predict import predict_listing
+from src.runtime_settings import get_runtime_settings, resolve_backend_choice
 
 
 st.set_page_config(page_title="Multimodal Product Classifier", layout="wide")
@@ -47,6 +48,60 @@ examples = load_examples(str(artifacts["metadata"]))
 metrics = read_json(artifacts["metrics"])
 confusion_rows = read_confusion_matrix(artifacts["confusion_matrix"])
 
+runtime = get_runtime_settings()
+requested_backend = st.sidebar.selectbox(
+    "Feature backend",
+    options=["demo", "auto", "clip"],
+    index=0,
+    help="`demo` is fully offline. `clip` and `auto` may use live model loading.",
+)
+selected_backend = resolve_backend_choice(
+    requested_backend=requested_backend,
+    demo_mode=bool(runtime["demo_mode"]),
+    allow_live_runs=bool(runtime["allow_live_runs"]),
+)
+
+st.sidebar.header("Live Test Settings")
+session_token = st.sidebar.text_input(
+    "Hugging Face Token (optional, session-only)",
+    type="password",
+    help="Only needed for gated/private model access in live CLIP mode. Never stored to disk.",
+)
+if session_token:
+    st.session_state["hf_token_session"] = session_token.strip()
+
+active_token = str(st.session_state.get("hf_token_session", "")).strip()
+token_present = bool(active_token or runtime["hf_token_present"])
+live_requested = selected_backend in {"auto", "clip"} and not bool(runtime["demo_mode"])
+live_allowed = live_requested and bool(runtime["allow_live_runs"])
+credits_ack = True
+if live_requested:
+    credits_ack = st.sidebar.checkbox(
+        "I understand live runs may consume network/API resources.",
+        value=False,
+    )
+
+st.sidebar.divider()
+st.sidebar.subheader("Runtime Status")
+st.sidebar.write(f"Mode: `{'demo' if runtime['demo_mode'] else 'live'}`")
+st.sidebar.write(f"DEMO_MODE: `{runtime['demo_mode']}`")
+st.sidebar.write(f"ALLOW_LIVE_RUNS: `{runtime['allow_live_runs']}`")
+st.sidebar.write(f"HF token present: `{token_present}`")
+st.sidebar.write(f"DEFAULT_CONFIG_PATH: `{runtime['default_config_path']}`")
+st.sidebar.write(f"REPORTS_DIR: `{runtime['reports_dir']}`")
+st.sidebar.write(f"Selected backend: `{selected_backend}`")
+st.sidebar.write(f"Selected report: `{artifacts['metrics']}`")
+
+if runtime["demo_mode"]:
+    st.info(
+        "Public demo mode: live model calls are disabled. "
+        "This demo uses local sample artifacts. Clone the repo and disable DEMO_MODE to run live CLIP tests."
+    )
+elif live_requested and not runtime["allow_live_runs"]:
+    st.warning("Live backend selected but ALLOW_LIVE_RUNS=false. Falling back to demo backend.")
+elif live_allowed and not credits_ack:
+    st.warning("Live mode requires confirmation because it may consume network/API resources.")
+
 st.title("Multimodal Product Classifier")
 st.caption("Local demo using product images plus title/description text. The bundled dataset is synthetic demo data.")
 
@@ -79,16 +134,24 @@ with right:
             temporary_image_path = Path(tmp.name)
             preview_path = temporary_image_path
 
+    result = None
     try:
-        result = predict_listing(
-            image_path=preview_path,
-            text=text,
-            model_path=DEFAULT_MODEL_PATH,
-            backend=None,
-        )
-    except Exception as exc:
-        st.error(f"Prediction failed: {exc}")
-        result = None
+        if live_requested and not runtime["allow_live_runs"]:
+            st.warning("Live runs are disabled by configuration. Set ALLOW_LIVE_RUNS=true to enable.")
+        elif live_requested and not credits_ack:
+            st.warning("Please confirm live-run resource usage in the sidebar.")
+        else:
+            try:
+                result = predict_listing(
+                    image_path=preview_path,
+                    text=text,
+                    model_path=DEFAULT_MODEL_PATH,
+                    backend=selected_backend,
+                    allow_download=live_allowed,
+                    hf_token=active_token or None,
+                )
+            except Exception as exc:
+                st.error(f"Prediction failed: {exc}")
     finally:
         if temporary_image_path is not None and temporary_image_path.exists():
             try:

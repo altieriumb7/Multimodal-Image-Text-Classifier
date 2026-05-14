@@ -29,6 +29,7 @@ def predict_listing(
     backend: str | None = None,
     clip_model: str = DEFAULT_CLIP_MODEL,
     allow_download: bool = False,
+    hf_token: str | None = None,
     top_k: int = 3,
 ) -> dict:
     bundle = load_model_bundle(model_path)
@@ -41,6 +42,7 @@ def predict_listing(
         backend=feature_backend,
         model_name=metadata.get("feature_model", clip_model),
         allow_download=allow_download,
+        token=hf_token,
     )
     image_embeddings = extractor.encode_image_paths([image_path])
     text_embeddings = extractor.encode_texts([prepare_text(text)])
@@ -72,6 +74,7 @@ def main() -> None:
     parser.add_argument("--backend", choices=["auto", "clip", "demo"], default=None, help="Override feature backend.")
     parser.add_argument("--clip-model", default=DEFAULT_CLIP_MODEL, help="CLIP model name when using CLIP backend.")
     parser.add_argument("--allow-download", action="store_true", help="Allow CLIP model download.")
+    parser.add_argument("--hf-token", default=None, help="Optional Hugging Face token for gated/private model access.")
     args = parser.parse_args()
 
     result = predict_listing(
@@ -81,6 +84,7 @@ def main() -> None:
         backend=args.backend,
         clip_model=args.clip_model,
         allow_download=args.allow_download,
+        hf_token=args.hf_token,
     )
     print(json.dumps(result, indent=2))
 

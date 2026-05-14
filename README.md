@@ -1,3 +1,13 @@
+---
+title: Multimodal Image + Text Classifier Dashboard
+emoji: 🧪
+colorFrom: red
+colorTo: gray
+sdk: docker
+app_port: 8501
+pinned: false
+---
+
 # Multimodal Image + Text Product Classifier
 
 Portfolio-quality, local-first classifier for product listings that combines an image and a title/description. The project includes preprocessing, feature extraction, baseline models, multimodal fusion, evaluation, a prediction CLI, tests, and a Streamlit demo.
@@ -113,6 +123,17 @@ The demo shows:
 - confusion matrix
 - example product listings
 - preloaded examples
+- optional sidebar token box for session-only Hugging Face token input during live CLIP tests (not required for demo)
+
+## Safe Demo/Live Modes
+
+The dashboard reads runtime flags from environment variables:
+
+- `DEMO_MODE=true`: forces offline demo backend and disables live runs.
+- `ALLOW_LIVE_RUNS=true`: enables live CLIP runs only when `DEMO_MODE=false`.
+- `HF_TOKEN`: optional token for gated/private model access.
+
+In live mode, the app requires a confirmation checkbox before running backends that may consume network/API resources.
 
 ## Results
 

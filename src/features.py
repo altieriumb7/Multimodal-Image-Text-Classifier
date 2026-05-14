@@ -102,6 +102,7 @@ class CLIPFeatureExtractor:
         model_name: str = DEFAULT_CLIP_MODEL,
         device: str | None = None,
         local_files_only: bool = True,
+        token: str | None = None,
     ):
         try:
             import torch
@@ -112,8 +113,16 @@ class CLIPFeatureExtractor:
         self.torch = torch
         self.model_name = model_name
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.processor = CLIPProcessor.from_pretrained(model_name, local_files_only=local_files_only)
-        self.model = CLIPModel.from_pretrained(model_name, local_files_only=local_files_only)
+        self.processor = CLIPProcessor.from_pretrained(
+            model_name,
+            local_files_only=local_files_only,
+            token=token,
+        )
+        self.model = CLIPModel.from_pretrained(
+            model_name,
+            local_files_only=local_files_only,
+            token=token,
+        )
         self.model.to(self.device)
         self.model.eval()
 
@@ -139,6 +148,7 @@ def get_feature_extractor(
     backend: str = "auto",
     model_name: str = DEFAULT_CLIP_MODEL,
     allow_download: bool = False,
+    token: str | None = None,
 ):
     backend = backend.lower()
     if backend == "demo":
@@ -150,6 +160,7 @@ def get_feature_extractor(
         return CLIPFeatureExtractor(
             model_name=model_name,
             local_files_only=not allow_download,
+            token=token,
         )
     except Exception:
         if backend == "clip":
